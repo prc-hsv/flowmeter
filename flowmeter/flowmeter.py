@@ -20,14 +20,15 @@ class Flowmeter:
         Args:
             pcap (str): OS location to a pcap file.
         """
-
-        self._pcap = rdpcap(pcap)
+        if pcap is not None:
+            self._pcap = rdpcap(pcap)
         self.columns = [
             "flow",                 # Index
             "src",                  # Source IP
             "src_port",             # Source port
             "dst",                  # Destination IP
             "dst_port",             # Destination port
+            "protocol",             # Protocol
             "feduration",	        # Duration of the flow in Microsecond
             "total_fpackets",	    # Total packets in the forward direction
             "total_bpackets",	    # Total packets in the backward direction
@@ -167,9 +168,9 @@ class Flowmeter:
         """
         ip_fields = [field.name for field in IP().fields_desc]
         tcp_fields = [field.name for field in TCP().fields_desc]
-        udp_fields = [field.name for field in UDP().fields_desc]
+        udp_fields = [field.name for field in UDP().fields_desc if field.name not in tcp_fields]
 
-        dataframe_fields = ip_fields + ['time'] + tcp_fields + ['size','payload','payload_raw','payload_hex']
+        dataframe_fields = ip_fields + ['time', 'protocol'] + tcp_fields + udp_fields + ['size','payload','payload_raw','payload_hex'] 
 
         # Create blank DataFrame
         df = pd.DataFrame(columns=dataframe_fields)
@@ -185,9 +186,20 @@ class Flowmeter:
                     field_values.append(packet[IP].fields[field])
 
             field_values.append(packet.time)
-
             layer_type = type(packet[IP].payload)
+
+            field_values.append(layer_type().name)
             for field in tcp_fields:
+                try:
+                    if field == 'options':
+                        field_values.append(len(packet[layer_type].fields[field]))
+                    else:
+                        field_values.append(packet[layer_type].fields[field])
+                    
+                except:
+                    field_values.append(None)
+
+            for field in udp_fields:
                 try:
                     if field == 'options':
                         field_values.append(len(packet[layer_type].fields[field]))
@@ -261,8 +273,7 @@ class Flowmeter:
         if df.shape[0] == 1:
             return 1
         df["date_time"] = pd.to_datetime(df["time"], unit="s")
-        idx = df.columns.get_loc("date_time")
-        duration = (df.iloc[-1, idx] - df.iloc[0,idx]) / np.timedelta64(1, 's')
+        duration = (df.date_time.max() - df.date_time.min()) / np.timedelta64(1, 's')
         return duration
 
 		
@@ -643,7 +654,7 @@ class Flowmeter:
             
         """
         
-        return df["flags"].apply(lambda x: str(x))
+        return df["flags"].astype(str)
 
     def count_flags(self, df, ip, flag):
         
@@ -658,8 +669,8 @@ class Flowmeter:
         """
         
         df = df.loc[df["src"]==ip]
-        df["flags"] = self.decode_flags(df).str.contains(flag)
-        return df[df["flags"] == True].shape[0]
+        has_flags = self.decode_flags(df).str.contains(flag)
+        return has_flags.sum()
 
     def get_total_forward_push_flags(self, df):
     
@@ -762,7 +773,11 @@ class Flowmeter:
             df (Dataframe): A bi-directional flow pandas dataframe.
         """
         if df.shape[0] > 1:
-            return self.get_total_forward_packets(df) / self.get_flow_duration(df)
+            duration = self.get_flow_duration(df)
+            if duration > 0:
+                return self.get_total_forward_packets(df) / duration
+            else:
+                return 0
         else:
              return 1
 
@@ -777,7 +792,11 @@ class Flowmeter:
         """
 
         if df.shape[0] > 1:
-            return self.get_total_backward_packets(df) / self.get_flow_duration(df) 
+            duration = self.get_flow_duration(df)
+            if duration > 0:
+                return self.get_total_backward_packets(df) / duration
+            else:
+                return 0
         else:
              return 1
 
@@ -791,7 +810,11 @@ class Flowmeter:
             df (Dataframe): A bi-directional flow pandas dataframe.
         """
         if df.shape[0] > 1:
-            return (self.get_total_backward_packets(df) + self.get_total_forward_packets(df)) / self.get_flow_duration(df)
+            duration = self.get_flow_duration(df)
+            if duration > 0:
+                return (self.get_total_backward_packets(df) + self.get_total_forward_packets(df)) / duration
+            else:
+                return 0
         else:
             return 1
 
@@ -804,8 +827,11 @@ class Flowmeter:
         Args:
             df (Dataframe): A bi-directional flow pandas dataframe.
         """
-
-        return (self.get_total_len_forward_packets(df) + self.get_total_len_backward_packets(df)) / self.get_flow_duration(df)
+        duration = self.get_flow_duration(df)
+        if duration > 0:
+            return (self.get_total_len_forward_packets(df) + self.get_total_len_backward_packets(df)) / duration
+        else:
+            return 0
 
     def get_min_flow_packet_size(self, df):
     
@@ -1239,6 +1265,18 @@ class Flowmeter:
         df = df.iloc[0,]
         return df[["src", "sport", "dst", "dport"]].tolist()[3]
 
+    def get_protocol(self, df):
+    
+        """
+        This returns the flow's protocol.
+        
+        Args:
+            df (Dataframe): A bi-directional flow pandas dataframe.
+        """
+    
+        df = df.iloc[0,]
+        return df["protocol"]
+
     def build_index(self, df):
 
         """
@@ -1276,6 +1314,7 @@ class Flowmeter:
             result["src_port"] = [self.get_src_port(flow)]
             result["dst"] = [self.get_dst_ip(flow)]
             result["dst_port"] = [self.get_dst_port(flow)]
+            result["protocol"] = [self.get_protocol(flow)]
             result["feduration"] = [self.get_flow_duration(flow)]
             result["total_fpackets"] = [self.get_total_forward_packets(flow)]
             result["total_bpackets"] = [self.get_total_backward_packets(flow)]
@@ -1354,7 +1393,8 @@ class Flowmeter:
         # print("\nBuilding Pool\n") # Test
         pool = Pool()
 
-
+        # Not sure this matters when you're not working from a file.
+        # Keeping it on for now.
         self._frames = pool.map(self._build_feature_from_flow, self._sessions)
         # print(self._frames) # Test
         
@@ -1365,5 +1405,3 @@ class Flowmeter:
             final[column] = final[column].fillna(0)
 
         return final
-
-
