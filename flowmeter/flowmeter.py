@@ -39,49 +39,60 @@ class Flowmeter:
             "protocol",             # Protocol
             "timestamp"
             "feduration",	        # Duration of the flow in Microsecond
+
             "total_fpackets",	    # Total packets in the forward direction
             "total_bpackets",	    # Total packets in the backward direction
             "total_fpktl",	        # Total size of packet in forward direction
             "total_bpktl",	        # Total size of packet in backward direction
+
             "max_fpktl",            # Maximum size of packet in forward direction
             "min_fpktl",	        # Minimum size of packet in forward direction
             "mean_fpktl",	        # Mean size of packet in forward direction
             "std_fpktl",	        # Standard deviation size of packet in forward direction
+
             "max_bpktl",	        # Maximum size of packet in backward direction
             "min_bpktl",	        # Minimum size of packet in backward direction
             "mean_bpktl",	        # Mean size of packet in backward direction
             "std_bpktl",	        # Standard deviation size of packet in backward direction
-            "total_fiat",	        # Total time between two packets sent in the forward direction
-            "total_biat",	        # Total time between two packets sent in the backward direction
-            "min_fiat", 	        # Minimum time between two packets sent in the forward direction
-            "min_biat", 	        # Minimum time between two packets sent in the backward direction
-            "max_fiat", 	        # Maximum time between two packets sent in the forward direction
-            "max_biat", 	        # Maximum time between two packets sent in the backward direction
-            "mean_fiat",	        # Mean time between two packets sent in the forward direction
-            "mean_biat",	        # Mean time between two packets sent in the backward direction
-            "std_fiat", 	        # Standard deviation time between two packets sent in the forward direction
-            "std_biat", 	        # Standard deviation time between two packets sent in the backward direction
+
             "flowBytesPerSecond",	# Number of flow bytes per second
             "flowPktsPerSecond",	# Number of flow packets per second
+
             "mean_flowiat",	        # Mean inter-arrival time of packet
             "std_flowiat",	        # Standard deviation inter-arrival time of packet
             "max_flowiat",	        # Maximum inter-arrival time of packet
             "min_flowiat",	        # Minimum inter-arrival time of packet
-            #Fwd IAT Tot/Mean/Std/Max/Min
-            #Bwd IAT Tot/Mean/Std/Max/Min
+
+            "total_fiat",	        # Total time between two packets sent in the forward direction
+            "mean_fiat",	        # Mean time between two packets sent in the forward direction
+            "std_fiat", 	        # Standard deviation time between two packets sent in the forward direction
+            "max_fiat", 	        # Maximum time between two packets sent in the forward direction
+            "min_fiat", 	        # Minimum time between two packets sent in the forward direction
+
+            "total_biat",	        # Total time between two packets sent in the backward direction
+            "mean_biat",	        # Mean time between two packets sent in the backward direction
+            "std_biat", 	        # Standard deviation time between two packets sent in the backward direction
+            "max_biat", 	        # Maximum time between two packets sent in the backward direction
+            "min_biat", 	        # Minimum time between two packets sent in the backward direction
+
             "fpsh_cnt", 	        # Number of times the PSH flag was set in packets travelling in the forward direction (0 for UDP)
             "bpsh_cnt", 	        # Number of times the PSH flag was set in packets travelling in the backward direction (0 for UDP)
+
             "furg_cnt", 	        # Number of times the URG flag was set in packets travelling in the forward direction (0 for UDP)
             "burg_cnt", 	        # Number of times the URG flag was set in packets travelling in the backward direction (0 for UDP)
+
             "total_fhlen",	        # Total bytes used for headers in the forward direction
             "total_bhlen",	        # Total bytes used for headers in the forward direction
+
             "fPktsPerSecond",	    # Number of forward packets per second
             "bPktsPerSecond",	    # Number of backward packets per second
+
             "min_flowpktl", 	    # Minimum length of a flow
             "max_flowpktl",	        # Maximum length of a flow
             "mean_flowpktl",	    # Mean length of a flow
             "std_flowpktl", 	    # Standard deviation length of a flow
-            #var_flowpktl
+            "var_flowpktl",         # Variance of length of a flow
+
             "flow_fin", 	        # Number of packets with FIN
             "flow_syn", 	        # Number of packets with SYN
             "flow_rst", 	        # Number of packets with RST
@@ -90,20 +101,24 @@ class Flowmeter:
             "flow_urg", 	        # Number of packets with URG
             "flow_cwe", 	        # Number of packets with CWE
             "flow_ece", 	        # Number of packets with ECE
+
             "downUpRatio",	        # Download and upload ratio
+
             "avgPacketSize",	    # Average size of packet
             "fAvgSegmentSize",	    # Average size observed in the forward direction
             "bAvgSegmentSize",	    # Average size observed in the backward direction
+
             "fAvgBytesPerBulk",	    # Average number of bytes bulk rate in the forward direction
             "fAvgPacketsPerBulk",	# Average number of packets bulk rate in the forward direction
             "fAvgBulkRate", 	    # Average number of bulk rate in the forward direction
+
             "bAvgBytesPerBulk",	    # Average number of bytes bulk rate in the backward direction
             "bAvgPacketsPerBulk",	# Average number of packets bulk rate in the backward direction
             "bAvgBulkRate", 	    # Average number of bulk rate in the backward direction
-            # "Subflow Fwd Pkts",
-            # "Subflow Fwd Byts",
-            # "Subflow Bwd Pkts",
-            # "Subflow Bwd Byts",
+            "fSubFlowAvgPkts",
+            "fSubFlowAvgBytes",
+            "bSubFlowAvgPkts",
+            "bSubFlowAvgBytes",
             # "Init Fwd Win Byts",
             # "Init Bwd Win Byts",
             # "Fwd Act Data Pkts",
@@ -926,6 +941,9 @@ class Flowmeter:
 
         return  df["size"].std()
 
+    def get_var_flow_packet_size(self, df):
+        return df['size'].var()
+
     def get_min_flow_iat(self, df):
     
         """
@@ -1326,6 +1344,32 @@ class Flowmeter:
         return str(pd.to_datetime(df['time'], unit='s').min())
         ...
 
+    def get_n_subflows(self, df):
+        time_delta = df['time'] - df['time'].shift(1).fillna(df['time']).values
+        n_subflows = (time_delta > 1).sum()
+        return n_subflows
+
+    def get_fwd_subflow_packets(self, df):
+        subflows = self.get_n_subflows(df)
+        fwd_packets = self.get_total_forward_packets(df)
+        return fwd_packets / subflows
+
+    def get_bwd_subflow_packets(self, df):
+        subflows = self.get_n_subflows(df)
+        bwd_packets = self.get_total_backward_packets(df)
+        return bwd_packets / subflows
+
+    def get_fwd_subflow_bytes(self, df):
+        subflows = self.get_n_subflows(df)
+        fwd_bytes = self.get_total_len_forward_packets(df)
+        return fwd_bytes / subflows
+
+    def get_bwd_subflow_bytes(self, df):
+        subflows = self.get_n_subflows(df)
+        bwd_bytes = self.get_total_len_backward_packets(df)
+        return bwd_bytes / subflows
+
+
     def build_index(self, df):
 
         """
@@ -1402,6 +1446,7 @@ class Flowmeter:
             result["max_flowpktl"] = [self.get_max_flow_packet_size(flow)]
             result["mean_flowpktl"] = [self.get_mean_flow_packet_size(flow)]
             result["std_flowpktl"] = [self.get_std_flow_packet_size(flow)]
+            result["var_flowpktl"] = [self.get_var_flow_packet_size(flow)]
             result["min_flowiat"] = [self.get_min_flow_iat(flow)]
             result["max_flowiat"] = [self.get_max_flow_iat(flow)]
             result["mean_flowiat"] = [self.get_mean_flow_iat(flow)]
@@ -1424,6 +1469,23 @@ class Flowmeter:
             result["bAvgBytesPerBulk"] = [self.get_average_backward_bytes_per_burt(flow)]
             result["bAvgPacketsPerBulk"] = [self.get_avg_backward_burst_packets(flow)]
             result["bAvgBulkRate"] = [self.get_avg_backward_in_total_burst(flow)]
+            result["fSubFlowAvgPkts"] = [self.get_fwd_subflow_packets(flow)]
+            result["fSubFlowAvgBytes"] = [self.get_fwd_subflow_bytes(flow)]
+            result["bSubFlowAvgPkts"] = [self.get_bwd_subflow_packets(flow)]
+            result["bSubFlowAvgBytes"] = [self.get_bwd_subflow_bytes(flow)]
+            # "Subflow Bwd Byts",
+            # "Init Fwd Win Byts",
+            # "Init Bwd Win Byts",
+            # "Fwd Act Data Pkts",
+            # "Fwd Seg Size Min",
+            # "Active Mean",
+            # "Active Std",
+            # "Active Max",
+            # "Active Min",
+            # "Idle Mean",
+            # "Idle Std",
+            # "Idle Max",
+            # "Idle Min",
             result["label"] = ["None"]
             #print(("\nAppending {}\n").format(result))
             return result
