@@ -1473,7 +1473,6 @@ class Flowmeter:
             result["fSubFlowAvgBytes"] = [self.get_fwd_subflow_bytes(flow)]
             result["bSubFlowAvgPkts"] = [self.get_bwd_subflow_packets(flow)]
             result["bSubFlowAvgBytes"] = [self.get_bwd_subflow_bytes(flow)]
-            # "Subflow Bwd Byts",
             # "Init Fwd Win Byts",
             # "Init Bwd Win Byts",
             # "Fwd Act Data Pkts",
