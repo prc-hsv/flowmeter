@@ -1,10 +1,7 @@
-# Flowmeter v0.0.3
-Flowmeter is a Scapy-based tool for deriving statistical features from PCAPs for data analysis and machine learning. The features are based on the java application <a href=http://netflow.ca/>Netflowmeter</a>.
+# PRC Flowmeter v0.0.1
+Flowmeter is a Scapy-based tool for deriving statistical features from PCAPs for data analysis and machine learning. The features are based on the java application [CICFlowmeter](https://github.com/ahlashkari/CICFlowMeter/)
 
-
-# Installation
-```pip install flowmeter```
-
+Based heavily on [this flowmeter app](https://github.com/alekzandr/flowmeter)
 
 # Usage
 A Flowmeter object is created with up to three parameters:
@@ -26,6 +23,10 @@ feature_gen = Flowmeter(
 feature_gen.run()
 
 ```
+
+### Current goals include:
+* Adding the ability to stream packets from a live socket
+* Adding the ability to stream directly to a csv file
 
 # Contributions
 If you would like to contribute feel free to fork the repo, clone the project, submit pull requests, open issues, or request features/enhancements.
