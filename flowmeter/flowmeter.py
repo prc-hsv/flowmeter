@@ -1,9 +1,13 @@
-from scapy.all import *
+# from scapy.all import *
+from scapy.layers.inet import TCP, IP, UDP
+from scapy.sendrecv import sniff, AsyncSniffer
+from threading import Thread
 import pandas as pd
 import numpy as np
 import binascii
 import gc
 from multiprocessing import Pool
+from .flowsession import FlowSession
 
 class Flowmeter:
 
@@ -14,14 +18,19 @@ class Flowmeter:
     learning applications.
     """
     
-    def __init__(self, pcap=None):
+    def __init__(self, offline=None, outfunc=None, outfile=None):
         
         """
         Args:
-            pcap (str): OS location to a pcap file.
+            offline (str): OS location to a pcap file.
+            outfunc: Function to send csv string to; if none supplied, print is used.
+            outfile: (str): file to catpture csv output
         """
-        if pcap is not None:
-            self._pcap = rdpcap(pcap)
+        if outfunc is None:
+            outfunc = print
+        self.outfunc = outfunc
+        self.offline = offline
+        self.outfile = outfile
         self.columns = [
             "flow",                 # Index
             "src",                  # Source IP
@@ -91,21 +100,38 @@ class Flowmeter:
             "label",                # Classification Label
         ]
         self._frames = []
+
+        if outfile is not None:
+            with open(outfile, 'wt') as f:
+                f.write(','.join(self.columns) + '\n')
+
+    
+    def process_session(self, packetlist):
+        self._pcap = packetlist
+        out_string = self._build_feature_dataframe().to_csv(header=False, line_terminator='\n')
+        self.outfunc(out_string)
+        if self.outfile is not None:
+            with open(self.outfile, 'at', newline='') as f:
+                f.write(out_string)
+
+
+    def run(self):
+        session_kwargs = dict(
+            callback=self.process_session,
+            sess_function=self._get_sessions
+        )
+        # sniff(session=FlowSession, offline=self.offline, session_kwargs=session_kwargs)
+        sniffer = AsyncSniffer(session=FlowSession, offline=self.offline, session_kwargs=session_kwargs)
+        try:
+            sniffer.start()
+            while True:
+                pass
+        except KeyboardInterrupt:
+            results = sniffer.stop()
+        print(results)
+        self.process_session(results)
         
 
-
-    def load_pcap(self, pcap):
-
-        """
-        This function takes in a pcap file saves it
-        as a scapy PacketList.
-
-        Args:
-            pcap (str): OS location to a pcap file.
-        """
-        self._pcap = rdpcap(pcap)
-        self._frames = []
-    
     def _get_sessions(self, packet):
 
         """
@@ -272,7 +298,7 @@ class Flowmeter:
 
         if df.shape[0] == 1:
             return 1
-        df["date_time"] = pd.to_datetime(df["time"], unit="s")
+        df["date_time"] = pd.to_datetime(df["time"].astype(float), unit="s")
         duration = (df.date_time.max() - df.date_time.min()) / np.timedelta64(1, 's')
         return duration
 
@@ -891,7 +917,7 @@ class Flowmeter:
         df (Dataframe): A bi-directional flow pandas dataframe.
         """
         if df.shape[0] > 1:
-            return  min(df["time"].diff().dropna())
+            return  min(df["time"].astype(float).diff().dropna())
         else:
             return 0
     
@@ -906,7 +932,7 @@ class Flowmeter:
         """
     
         if df.shape[0] > 1:
-            return  max(df["time"].diff().dropna())
+            return  max(df["time"].astype(float).diff().dropna())
         else:
             return 0
 
@@ -922,7 +948,7 @@ class Flowmeter:
         """
     
         #src_times = get_src_times(df)
-        return df["time"].diff().dropna().mean()
+        return df["time"].astype(float).diff().dropna().mean()
     
     def get_std_flow_iat(self, df):
     
@@ -934,7 +960,7 @@ class Flowmeter:
         df (Dataframe): A bi-directional flow pandas dataframe.
         """
     
-        return  df["time"].diff().dropna().std()
+        return  df["time"].astype(float).diff().dropna().std()
 
     def get_total_flow_push_flags(self, df):
     
@@ -1075,7 +1101,7 @@ class Flowmeter:
             return 0 
 
         a = pd.DataFrame()
-        a["time"] = pd.to_datetime(df["time"], unit="s")
+        a["time"] = pd.to_datetime(df["time"].astype(float), unit="s")
         a["count"] = 1
         a.set_index(["time"], inplace=True)
         a["rolling"] = a.rolling('100ms').sum()
@@ -1385,17 +1411,17 @@ class Flowmeter:
         return self.build_sessions()
 
 
-    def build_feature_dataframe(self):        
+    def _build_feature_dataframe(self):        
         
         
         self._sessions = self.build_sessions()
         gc.collect()
         # print("\nBuilding Pool\n") # Test
-        pool = Pool()
+        # pool = Pool()
 
         # Not sure this matters when you're not working from a file.
         # Keeping it on for now.
-        self._frames = pool.map(self._build_feature_from_flow, self._sessions)
+        self._frames = [self._build_feature_from_flow(session) for session in self._sessions]
         # print(self._frames) # Test
         
         final = pd.concat(self._frames)
