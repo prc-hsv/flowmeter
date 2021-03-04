@@ -7,7 +7,7 @@ import numpy as np
 import binascii
 import gc
 from multiprocessing import Pool
-from .flowsession import FlowSession
+from . import FlowSession
 
 class Flowmeter:
 
