@@ -16,9 +16,9 @@ Building off of scapy Sessions, Flowmeter separates packet streams into distinct
 from flowmeter import Flowmeter
 
 feature_gen = Flowmeter(
-    offline = "1548216696.814641.pcap",
+    offline = "input.pcap",
     outfunc = None,
-    outfile = "1548216696.814641")
+    outfile = "output.csv")
 
 feature_gen.run()
 
