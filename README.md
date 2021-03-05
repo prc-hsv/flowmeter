@@ -24,10 +24,6 @@ feature_gen.run()
 
 ```
 
-### Current goals include:
-* Adding the ability to stream packets from a live socket
-* Adding the ability to stream directly to a csv file
-
 # Contributions
 If you would like to contribute feel free to fork the repo, clone the project, submit pull requests, open issues, or request features/enhancements.
 
