@@ -7,20 +7,17 @@ from types import FunctionType
 import time
 
 FLOW_TIMEOUT = 120  # seconds
-ACTIVITY_TIMEOUT = 30  # seconds
 
 class FlowSession(TCPSession):
 
     def __init__(self, 
             flow_timeout: float = FLOW_TIMEOUT, 
-            activity_timeout: float = ACTIVITY_TIMEOUT,
             callback: FunctionType = None,
             sess_function: FunctionType = None,
             *args, **kwargs):
         super(FlowSession, self).__init__(*args, **kwargs)
         # self.flows = Flowmeter()
         self.flow_timeout = flow_timeout
-        self.activity_timeout = activity_timeout
         self.callback = callback
         
         self.sess_function = sess_function
@@ -70,9 +67,6 @@ class FlowSession(TCPSession):
                     # print('Got one!')
                     continue
                 if len(packet_times) < 2:
-                    continue
-                if pkt.time - max(packet_times) >= self.activity_timeout:
-                    self.callback(sess)
                     continue
                 if pkt.time - min(packet_times) >= self.flow_timeout:
                     self.callback(sess)

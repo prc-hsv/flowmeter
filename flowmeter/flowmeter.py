@@ -6,8 +6,7 @@ import pandas as pd
 import numpy as np
 import binascii
 import gc
-from multiprocessing import Pool
-from . import FlowSession
+from .flowsession import FlowSession
 
 class Flowmeter:
 
@@ -38,65 +37,105 @@ class Flowmeter:
             "dst",                  # Destination IP
             "dst_port",             # Destination port
             "protocol",             # Protocol
-            "feduration",	        # Duration of the flow in Microsecond
+            "timestamp",            # Timestamp
+            "duration",	            # Duration of the flow in Microsecond
+
             "total_fpackets",	    # Total packets in the forward direction
             "total_bpackets",	    # Total packets in the backward direction
             "total_fpktl",	        # Total size of packet in forward direction
             "total_bpktl",	        # Total size of packet in backward direction
+
             "min_fpktl",	        # Minimum size of packet in forward direction
-            "min_bpktl",	        # Minimum size of packet in backward direction
             "max_fpktl",            # Maximum size of packet in forward direction
-            "max_bpktl",	        # Maximum size of packet in backward direction
             "mean_fpktl",	        # Mean size of packet in forward direction
-            "mean_bpktl",	        # Mean size of packet in backward direction
             "std_fpktl",	        # Standard deviation size of packet in forward direction
+
+            "min_bpktl",	        # Minimum size of packet in backward direction
+            "max_bpktl",	        # Maximum size of packet in backward direction
+            "mean_bpktl",	        # Mean size of packet in backward direction
             "std_bpktl",	        # Standard deviation size of packet in backward direction
+
+            "flowBytesPerSecond",	# Number of flow bytes per second
+            "flowPktsPerSecond",	# Number of flow packets per second
+
+            "mean_flowiat",	        # Mean inter-arrival time of packet
+            "std_flowiat",	        # Standard deviation inter-arrival time of packet
+            "max_flowiat",	        # Maximum inter-arrival time of packet
+            "min_flowiat",	        # Minimum inter-arrival time of packet
+
             "total_fiat",	        # Total time between two packets sent in the forward direction
-            "total_biat",	        # Total time between two packets sent in the backward direction
-            "min_fiat", 	        # Minimum time between two packets sent in the forward direction
-            "min_biat", 	        # Minimum time between two packets sent in the backward direction
-            "max_fiat", 	        # Maximum time between two packets sent in the forward direction
-            "max_biat", 	        # Maximum time between two packets sent in the backward direction
             "mean_fiat",	        # Mean time between two packets sent in the forward direction
-            "mean_biat",	        # Mean time between two packets sent in the backward direction
             "std_fiat", 	        # Standard deviation time between two packets sent in the forward direction
+            "max_fiat", 	        # Maximum time between two packets sent in the forward direction
+            "min_fiat", 	        # Minimum time between two packets sent in the forward direction
+
+            "total_biat",	        # Total time between two packets sent in the backward direction
+            "mean_biat",	        # Mean time between two packets sent in the backward direction
             "std_biat", 	        # Standard deviation time between two packets sent in the backward direction
+            "max_biat", 	        # Maximum time between two packets sent in the backward direction
+            "min_biat", 	        # Minimum time between two packets sent in the backward direction
+
             "fpsh_cnt", 	        # Number of times the PSH flag was set in packets travelling in the forward direction (0 for UDP)
             "bpsh_cnt", 	        # Number of times the PSH flag was set in packets travelling in the backward direction (0 for UDP)
+
             "furg_cnt", 	        # Number of times the URG flag was set in packets travelling in the forward direction (0 for UDP)
             "burg_cnt", 	        # Number of times the URG flag was set in packets travelling in the backward direction (0 for UDP)
+
             "total_fhlen",	        # Total bytes used for headers in the forward direction
             "total_bhlen",	        # Total bytes used for headers in the forward direction
+
             "fPktsPerSecond",	    # Number of forward packets per second
             "bPktsPerSecond",	    # Number of backward packets per second
-            "flowPktsPerSecond",	# Number of flow packets per second
-            "flowBytesPerSecond",	# Number of flow bytes per second
+
             "min_flowpktl", 	    # Minimum length of a flow
             "max_flowpktl",	        # Maximum length of a flow
             "mean_flowpktl",	    # Mean length of a flow
             "std_flowpktl", 	    # Standard deviation length of a flow
-            "min_flowiat",	        # Minimum inter-arrival time of packet
-            "max_flowiat",	        # Maximum inter-arrival time of packet
-            "mean_flowiat",	        # Mean inter-arrival time of packet
-            "std_flowiat",	        # Standard deviation inter-arrival time of packet
+            "var_flowpktl",         # Variance of length of a flow
+
             "flow_fin", 	        # Number of packets with FIN
             "flow_syn", 	        # Number of packets with SYN
             "flow_rst", 	        # Number of packets with RST
             "flow_psh", 	        # Number of packets with PUSH
             "flow_ack", 	        # Number of packets with ACK
             "flow_urg", 	        # Number of packets with URG
-            "flow_cwr", 	        # Number of packets with CWE
+            "flow_cwr", 	        # Number of packets with CWR
             "flow_ece", 	        # Number of packets with ECE
+
             "downUpRatio",	        # Download and upload ratio
+
             "avgPacketSize",	    # Average size of packet
             "fAvgSegmentSize",	    # Average size observed in the forward direction
+            "bAvgSegmentSize",	    # Average size observed in the backward direction
+
             "fAvgBytesPerBulk",	    # Average number of bytes bulk rate in the forward direction
             "fAvgPacketsPerBulk",	# Average number of packets bulk rate in the forward direction
             "fAvgBulkRate", 	    # Average number of bulk rate in the forward direction
-            "bAvgSegmentSize",	    # Average size observed in the backward direction
+
             "bAvgBytesPerBulk",	    # Average number of bytes bulk rate in the backward direction
             "bAvgPacketsPerBulk",	# Average number of packets bulk rate in the backward direction
             "bAvgBulkRate", 	    # Average number of bulk rate in the backward direction
+            
+            "fSubFlowAvgPkts",
+            "fSubFlowAvgBytes",
+            "bSubFlowAvgPkts",
+            "bSubFlowAvgBytes",
+
+            'fInitWinSize',
+            'bInitWinSize',
+            'fDataPkts',
+            'fHeaderSizeMin',
+
+            'mean_active_s',
+            'std_active_s',
+            'max_active_s',
+            'min_active_s',
+
+            'mean_idle_s',
+            'std_idle_s',
+            'max_idle_s',
+            'min_idle_s',
+
             "label",                # Classification Label
         ]
         self._frames = []
@@ -127,8 +166,8 @@ class Flowmeter:
             while True:
                 pass
         except KeyboardInterrupt:
+            print('Stopping sniffer')
             results = sniffer.stop()
-        print(results)
         self.process_session(results)
         
 
@@ -194,9 +233,9 @@ class Flowmeter:
         """
         ip_fields = [field.name for field in IP().fields_desc]
         tcp_fields = [field.name for field in TCP().fields_desc]
-        udp_fields = [field.name for field in UDP().fields_desc if field.name not in tcp_fields]
+        # udp_fields = [field.name for field in UDP().fields_desc if field.name not in tcp_fields]
 
-        dataframe_fields = ip_fields + ['time', 'protocol'] + tcp_fields + udp_fields + ['size','payload','payload_raw','payload_hex'] 
+        dataframe_fields = ip_fields + ['time', 'protocol'] + tcp_fields + ['size','payload','payload_raw','payload_hex'] 
 
         # Create blank DataFrame
         df = pd.DataFrame(columns=dataframe_fields)
@@ -222,15 +261,6 @@ class Flowmeter:
                     else:
                         field_values.append(packet[layer_type].fields[field])
                     
-                except:
-                    field_values.append(None)
-
-            for field in udp_fields:
-                try:
-                    if field == 'options':
-                        field_values.append(len(packet[layer_type].fields[field]))
-                    else:
-                        field_values.append(packet[layer_type].fields[field])
                 except:
                     field_values.append(None)
             
@@ -907,6 +937,9 @@ class Flowmeter:
 
         return  df["size"].std()
 
+    def get_var_flow_packet_size(self, df):
+        return df['size'].var()
+
     def get_min_flow_iat(self, df):
     
         """
@@ -1276,8 +1309,8 @@ class Flowmeter:
             df (Dataframe): A bi-directional flow pandas dataframe.
         """
     
-        df = df.iloc[0,]
-        return df[["src", "sport", "dst", "dport"]].tolist()[1]
+        row = df.iloc[0,]
+        return row[["src", "sport", "dst", "dport"]].tolist()[1]
 
     def get_dst_port(self, df):
     
@@ -1288,8 +1321,8 @@ class Flowmeter:
             df (Dataframe): A bi-directional flow pandas dataframe.
         """
     
-        df = df.iloc[0,]
-        return df[["src", "sport", "dst", "dport"]].tolist()[3]
+        row = df.iloc[0,]
+        return row[["src", "sport", "dst", "dport"]].tolist()[3]
 
     def get_protocol(self, df):
     
@@ -1300,8 +1333,138 @@ class Flowmeter:
             df (Dataframe): A bi-directional flow pandas dataframe.
         """
     
-        df = df.iloc[0,]
-        return df["protocol"]
+        row = df.iloc[0,]
+        return row["protocol"]
+
+    def get_timestamp(self, df):
+        return str(pd.to_datetime(df['time'], unit='s').min())
+
+    def get_timedelta_ns(self, df):
+        sorted_time = df['time'].sort_values()
+        time_delta = (sorted_time - sorted_time.shift(1).fillna(sorted_time)).values[1:].astype(float)
+        return time_delta
+
+    def get_n_subflows(self, df):
+        time_delta = self.get_timedelta_ns(df)
+        n_subflows = (time_delta > 1e9).sum() + 1
+        return n_subflows
+
+    def get_fwd_subflow_packets(self, df):
+        subflows = self.get_n_subflows(df)
+        fwd_packets = self.get_total_forward_packets(df)
+        return fwd_packets / subflows
+
+    def get_bwd_subflow_packets(self, df):
+        subflows = self.get_n_subflows(df)
+        bwd_packets = self.get_total_backward_packets(df)
+        return bwd_packets / subflows
+
+    def get_fwd_subflow_bytes(self, df):
+        subflows = self.get_n_subflows(df)
+        fwd_bytes = self.get_total_len_forward_packets(df)
+        return fwd_bytes / subflows
+
+    def get_bwd_subflow_bytes(self, df):
+        subflows = self.get_n_subflows(df)
+        bwd_bytes = self.get_total_len_backward_packets(df)
+        return bwd_bytes / subflows
+
+    def get_period_lengths(self, df, idle_threshold_s):
+
+        # Get a list of time deltas between consecutive packets
+        time_delta_s = self.get_timedelta_ns(df) / 1e9
+
+        # Determine whether each delta is less than the idle threshold
+        is_active = time_delta_s <= idle_threshold_s
+
+        # Find the indices where it goes from active to inactive
+        swaps = is_active[:-1] ^ is_active[1:]
+        
+        # That gets us the last index of each period. We want
+        # the first index of the next one.
+        swap_index = np.where(swaps)[0] + 1
+
+        # Now we need to add 0 and len(time_delta_ns) so that 
+        # we have start and end points
+        swap_index = np.hstack([0, swap_index, len(time_delta_s)])
+
+        # Make slices that represent the start and finish of each period
+        active_slices = [slice(start, stop) for start, stop in zip(swap_index[::2], swap_index[1::2])]
+        idle_slices = [slice(start, stop) for start, stop in zip(swap_index[1::2], swap_index[2::2])]
+
+        # Get the sums of each period denoted by their slices
+        active_periods = np.array([time_delta_s[slice_].sum() for slice_ in active_slices])
+        idle_periods = np.array([time_delta_s[slice_].sum() for slice_ in idle_slices])
+
+        return active_periods, idle_periods
+
+    def get_mean_active_sec(self, df):
+        active_periods, _ = self.get_period_lengths(df, idle_threshold_s=5)
+        return active_periods.mean()
+
+    def get_std_active_sec(self, df):
+        active_periods, _ = self.get_period_lengths(df, idle_threshold_s=5)
+        return active_periods.std()
+
+    def get_max_active_sec(self, df):
+        active_periods, _ = self.get_period_lengths(df, idle_threshold_s=5)
+        return active_periods.max()
+
+    def get_min_active_sec(self, df):
+        active_periods, _ = self.get_period_lengths(df, idle_threshold_s=5)
+        return active_periods.min()
+
+    def get_mean_idle_sec(self, df):
+        _, idle_periods = self.get_period_lenghts(df, idle_threshold_s=5)
+        return idle_periods.mean()
+
+    def get_std_idle_sec(self, df):
+        _, idle_periods = self.get_period_lenghts(df, idle_threshold_s=5)
+        return idle_periods.std()
+
+    def get_max_idle_sec(self, df):
+        _, idle_periods = self.get_period_lenghts(df, idle_threshold_s=5)
+        return idle_periods.max()
+
+    def get_min_idle_sec(self, df):
+        _, idle_periods = self.get_period_lenghts(df, idle_threshold_s=5)
+        return idle_periods.min()
+
+    def get_fwd_init_tcp_win(self, df):
+        src = self.get_src_ip(df)
+        src_df = df.loc[df["src"]==src].sort_values('time')
+        if len(src_df) == 0:
+            return 0
+
+        row = src_df.iloc[0]
+        return row['window']
+
+    def get_bwd_init_tcp_win(self, df):
+        src = self.get_dst_ip(df)
+        src_df = df.loc[df["src"]==src].sort_values('time')
+        if len(src_df) == 0:
+            return 0
+
+        row = src_df.iloc[0]
+        return row['window']
+
+    def get_fwd_data_packets(self, df):
+        src = self.get_src_ip(df)
+        src_df = df.loc[df["src"]==src].sort_values('time')
+        if len(src_df) == 0:
+            return 0
+
+        data_pkt_count = (src_df['size'] > 0).sum()
+        return data_pkt_count
+
+    def get_fwd_header_min(self, df):
+        src = self.get_src_ip(df)
+        src_df = df.loc[df["src"]==src].sort_values('time')
+        if len(src_df) == 0:
+            return 0
+        
+        min_header_len = src_df['len'].min()
+        return min_header_len
 
     def build_index(self, df):
 
@@ -1341,47 +1504,62 @@ class Flowmeter:
             result["dst"] = [self.get_dst_ip(flow)]
             result["dst_port"] = [self.get_dst_port(flow)]
             result["protocol"] = [self.get_protocol(flow)]
-            result["feduration"] = [self.get_flow_duration(flow)]
+            result['timestamp'] = [self.get_timestamp(flow)]
+            result["duration"] = [self.get_flow_duration(flow)]
+            
             result["total_fpackets"] = [self.get_total_forward_packets(flow)]
             result["total_bpackets"] = [self.get_total_backward_packets(flow)]
             result["total_fpktl"] = [self.get_total_len_forward_packets(flow)]
             result["total_bpktl"] = [self.get_total_len_backward_packets(flow)]
+            
             result["min_fpktl"] = [self.get_min_forward_packet_size(flow)]
-            result["min_bpktl"] = [self.get_min_backward_packet_size(flow)]
             result["max_fpktl"] = [self.get_max_forward_packet_size(flow)]
-            result["max_bpktl"] = [self.get_max_backward_packet_size(flow)]
             result["mean_fpktl"] = [self.get_mean_forward_packet_size(flow)]
-            result["mean_bpktl"] = [self.get_mean_backward_packet_size(flow)]
             result["std_fpktl"] = [self.get_std_forward_packet_size(flow)]
+            
+            result["min_bpktl"] = [self.get_min_backward_packet_size(flow)]
+            result["max_bpktl"] = [self.get_max_backward_packet_size(flow)]
+            result["mean_bpktl"] = [self.get_mean_backward_packet_size(flow)]
             result["std_bpktl"] = [self.get_std_backward_packet_size(flow)]
+            
+            result["flowBytesPerSecond"] = [self.get_flow_bytes_per_second(flow)]
+            result["flowPktsPerSecond"] = [self.get_flow_packets_per_second(flow)]
+            
+            result["mean_flowiat"] = [self.get_mean_flow_iat(flow)]
+            result["std_flowiat"] = [self.get_std_flow_iat(flow)]
+            result["max_flowiat"] = [self.get_max_flow_iat(flow)]
+            result["min_flowiat"] = [self.get_min_flow_iat(flow)]
+            
             result["total_fiat"] = [self.get_iat_forward_total_time(flow)]
-            result["total_biat"] = [self.get_iat_backward_total_time(flow)]
-            result["min_fiat"] = [self.get_iat_forward_min_times(flow)]
-            result["min_biat"] = [self.get_iat_backwards_min_times(flow)]
-            result["max_fiat"] = [self.get_iat_forward_max_times(flow)]
-            result["max_biat"] = [self.get_iat_forward_max_times(flow)]
             result["mean_fiat"] = [self.get_iat_forward_mean_times(flow)]
-            result["mean_biat"] = [self.get_iat_backwards_mean_times(flow)]
             result["std_fiat"] = [self.get_iat_forward_std_times(flow)]
+            result["max_fiat"] = [self.get_iat_forward_max_times(flow)]
+            result["min_fiat"] = [self.get_iat_forward_min_times(flow)]
+            
+            result["total_biat"] = [self.get_iat_backward_total_time(flow)]
+            result["mean_biat"] = [self.get_iat_backwards_mean_times(flow)]
             result["std_biat"] = [self.get_iat_backwards_std_times(flow)]
+            result["max_biat"] = [self.get_iat_forward_max_times(flow)]
+            result["min_biat"] = [self.get_iat_backwards_min_times(flow)]
+            
             result["fpsh_cnt"] = [self.get_total_forward_push_flags(flow)]
             result["bpsh_cnt"] = [self.get_total_backward_push_flags(flow)]
+            
             result["furg_cnt"] = [self.get_total_forward_urgent_flags(flow)]
             result["burg_cnt"] = [self.get_total_backward_urgent_flags(flow)]
+            
             result["total_fhlen"] = [self.get_total_header_len_forward_packets(flow)]
             result["total_bhlen"] = [self.get_total_header_len_backward_packets(flow)]
+            
             result["fPktsPerSecond"] = [self.get_forward_packets_per_second(flow)]
             result["bPktsPerSecond"] = [self.get_backward_packets_per_second(flow)]
-            result["flowPktsPerSecond"] = [self.get_flow_packets_per_second(flow)]
-            result["flowBytesPerSecond"] = [self.get_flow_bytes_per_second(flow)]
+            
             result["min_flowpktl"] = [self.get_min_flow_packet_size(flow)]
             result["max_flowpktl"] = [self.get_max_flow_packet_size(flow)]
             result["mean_flowpktl"] = [self.get_mean_flow_packet_size(flow)]
             result["std_flowpktl"] = [self.get_std_flow_packet_size(flow)]
-            result["min_flowiat"] = [self.get_min_flow_iat(flow)]
-            result["max_flowiat"] = [self.get_max_flow_iat(flow)]
-            result["mean_flowiat"] = [self.get_mean_flow_iat(flow)]
-            result["std_flowiat"] = [self.get_std_flow_iat(flow)]
+            result["var_flowpktl"] = [self.get_var_flow_packet_size(flow)]
+            
             result["flow_fin"] = [self.get_total_flow_fin_flags(flow)]
             result["flow_syn"] = [self.get_total_flow_syn_flags(flow)]
             result["flow_rst"] = [self.get_total_flow_reset_flags(flow)]
@@ -1390,16 +1568,52 @@ class Flowmeter:
             result["flow_urg"] = [self.get_total_flow_urg_flags(flow)]
             result["flow_cwr"] = [self.get_total_flow_cwr_flags(flow)]
             result["flow_ece"] = [self.get_total_flow_ece_flags(flow)]
+            
             result["downUpRatio"] = [self.get_upload_download_ratio(flow)]
+            
             result["avgPacketSize"] = [self.get_avg_packet_size(flow)]
             result["fAvgSegmentSize"] = [self.get_avg_forward_segment_size(flow)]
+            result["bAvgSegmentSize"] = [self.get_avg_backward_segment_size(flow)]
+            
             result["fAvgBytesPerBulk"] = [self.get_average_forward_bytes_per_burt(flow)]
             result["fAvgPacketsPerBulk"] = [self.get_avg_forward_burst_packets(flow)]
             result["fAvgBulkRate"] = [self.get_avg_forward_in_total_burst(flow)]
-            result["bAvgSegmentSize"] = [self.get_avg_backward_segment_size(flow)]
+            
             result["bAvgBytesPerBulk"] = [self.get_average_backward_bytes_per_burt(flow)]
             result["bAvgPacketsPerBulk"] = [self.get_avg_backward_burst_packets(flow)]
             result["bAvgBulkRate"] = [self.get_avg_backward_in_total_burst(flow)]
+            
+            result["fSubFlowAvgPkts"] = [self.get_fwd_subflow_packets(flow)]
+            result["fSubFlowAvgBytes"] = [self.get_fwd_subflow_bytes(flow)]
+            result["bSubFlowAvgPkts"] = [self.get_bwd_subflow_packets(flow)]
+            result["bSubFlowAvgBytes"] = [self.get_bwd_subflow_bytes(flow)]
+            
+            result['fInitWinSize'] = [self.get_fwd_init_tcp_win(flow)]
+            result['bInitWinSize'] = [self.get_bwd_init_tcp_win(flow)]
+            result['fDataPkts'] = [self.get_fwd_data_packets(flow)]
+            result['fHeaderSizeMin'] = [self.get_fwd_header_min(flow)]
+            active_periods, idle_periods = self.get_period_lengths(flow, idle_threshold_s=5)
+            if len(active_periods) > 0:
+                result['mean_active_s'] = [active_periods.mean()]
+                result['std_active_s'] = [active_periods.std()]
+                result['max_active_s'] = [active_periods.max()]
+                result['min_active_s'] = [active_periods.std()]
+            else:
+                result['mean_active_s'] = [0]
+                result['std_active_s'] = [0]
+                result['max_active_s'] = [0]
+                result['min_active_s'] = [0]
+            if len(idle_periods) > 0:
+                result['mean_idle_s'] = [idle_periods.mean()]
+                result['std_idle_s'] = [idle_periods.std()]
+                result['max_idle_s'] = [idle_periods.max()]
+                result['min_idle_s'] = [idle_periods.std()]
+            else:
+                result['mean_idle_s'] = [0]
+                result['std_idle_s'] = [0]
+                result['max_idle_s'] = [0]
+                result['min_idle_s'] = [0]
+                
             result["label"] = ["None"]
             #print(("\nAppending {}\n").format(result))
             return result
