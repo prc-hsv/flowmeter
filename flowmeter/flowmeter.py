@@ -160,14 +160,9 @@ class Flowmeter:
             sess_function=self._get_sessions
         )
         # sniff(session=FlowSession, offline=self.offline, session_kwargs=session_kwargs)
-        sniffer = AsyncSniffer(session=FlowSession, offline=self.offline, session_kwargs=session_kwargs)
-        try:
-            sniffer.start()
-            while True:
-                pass
-        except KeyboardInterrupt:
-            print('Stopping sniffer')
-            results = sniffer.stop()
+        print('Sniffing; ctrl+c to stop.')
+        results = sniff(session=FlowSession, offline=self.offline, session_kwargs=session_kwargs)
+        print('Stopping...')
         self.process_session(results)
         
 
