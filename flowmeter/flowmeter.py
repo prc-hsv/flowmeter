@@ -1337,10 +1337,10 @@ class Flowmeter:
         return row["protocol"]
 
     def get_timestamp(self, df):
-        return str(pd.to_datetime(df['time'], unit='s').min())
+        return str(pd.to_datetime(df['time'].astype(float), unit='s').min())
 
     def get_timedelta_ns(self, df):
-        sorted_time = df['time'].sort_values()
+        sorted_time = df['time'].astype(float).sort_values()
         time_delta = (sorted_time - sorted_time.shift(1).fillna(sorted_time)).values[1:].astype(float)
         return time_delta
 
